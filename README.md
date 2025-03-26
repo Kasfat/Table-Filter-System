@@ -1,21 +1,23 @@
 # Table Filter System
 
-Installation
+📦 Installation
 
-1.clone the repository
+To get started, clone the repository and install dependencies:
+
+# Clone the repository
+
 git clone https://github.com/Kasfat/Table-Filter-System.git
+
 cd Table-Filter-System
 
-2.Install dependencies
+# Install dependencies
+
 npm install
-
-# or
-
+or
 yarn install
 
-To start The Application
+# To start The Application
+
 npm start
-
-# or
-
+or
 yarn start
