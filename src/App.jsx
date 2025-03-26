@@ -3,7 +3,9 @@ import "./App.css";
 import fetchDivisions from "./api/fetchDivisions";
 import { useState } from "react";
 import fetchDistricts from "./api/fetchDistricts";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
+
 function App() {
   const [division, setDivision] = useState([]);
   const [district, setDistrict] = useState([]);
@@ -11,29 +13,12 @@ function App() {
   const [keyword, setKeyword] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
-
-  const [loadig, setLoading] = useState(false);
+  const [tododata, setTododata] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const navigate = useNavigate();
-
-  const urlQueryParams = (division, district, status, keyword) => {
-    const params = new URLSearchParams();
-
-    if (division) {
-      params.append("division", division);
-    }
-    if (district) {
-      params.append("district", district);
-    }
-    if (status) {
-      params.append("status", status);
-    }
-    if (keyword) {
-      params.append("keyword", keyword);
-    }
-    navigate(`?${params.toString()}`);
-  };
+  const location = useLocation();
 
   // division fetch
   useEffect(() => {
@@ -45,6 +30,7 @@ function App() {
       } catch (err) {
         setError(err);
       }
+      setLoading(false);
     };
     getDivisions();
   }, []);
@@ -65,9 +51,77 @@ function App() {
       } catch (err) {
         setError(err);
       }
+      setLoading(false);
     };
     getdistricts();
   }, [selectedDivision]);
+
+  //create url queryParam
+  const urlQueryParams = (division, district, status, keyword) => {
+    const params = new URLSearchParams();
+    if (division) {
+      params.append("division", division);
+    }
+    if (district) {
+      params.append("district", district);
+    }
+    if (status) {
+      params.append("status", status);
+    }
+    if (keyword) {
+      params.append("keyword", keyword);
+    }
+    navigate(`?${params.toString()}`);
+    fetchFilteredData(division, district, status, keyword);
+  };
+
+  // Direct hit url using params query string and set initial filter value
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+
+    const divisionParam = queryParams.get("division") || "";
+    const districtParam = queryParams.get("district") || "";
+    const statusParam = queryParams.get("status") || "";
+    const keywordParam = queryParams.get("keyword") || "";
+
+    setSelectedDivision(divisionParam);
+    setSelectedDistrict(districtParam);
+    setStatus(statusParam);
+    setKeyword(keywordParam);
+
+    if (divisionParam) {
+      fetchDistricts(divisionParam);
+    }
+
+    if (divisionParam || districtParam || statusParam || keywordParam) {
+      fetchFilteredData(
+        divisionParam,
+        districtParam,
+        statusParam,
+        keywordParam
+      );
+    }
+  }, [location.search]);
+
+  // Todo api fetch and filter
+  const fetchFilteredData = async (division, district, status, keywords) => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (division) params.append("division", division);
+    if (district) params.append("district", district);
+    if (status) params.append("status", status);
+    if (keywords) params.append("keywords", keywords);
+
+    try {
+      const response = await axios.get(
+        `https://jsonplaceholder.typicode.com/todos?${params.toString()}`
+      );
+      setTododata(response.data);
+    } catch (error) {
+      console.error("Error fetching filtered data:", error);
+    }
+    setLoading(false);
+  };
 
   const handleDisivionChange = (e) => {
     const division = e.target.value;
@@ -96,10 +150,11 @@ function App() {
     urlQueryParams(selectedDivision, selectedDistrict, status, keyword);
   };
 
-  // const applyTableFilter = async()=>{
-  //   setLoading(true);
+  const applyFilters = () => {
+    urlQueryParams(selectedDivision, selectedDistrict, status, keyword);
+  };
 
-  // }
+  console.log(tododata);
 
   const resetFilter = () => {
     setSelectedDivision("");
@@ -107,6 +162,8 @@ function App() {
     setStatus("");
     setKeyword("");
     navigate("/");
+    setLoading(false);
+    setTododata([]);
   };
 
   return (
@@ -185,7 +242,8 @@ function App() {
             </button>
             <button
               className="bg-blue-500 text-white px-4 py-2 rounded-lg"
-              onClick={applyTableFilter}
+              onClick={applyFilters}
+              disabled={!selectedDivision || !selectedDistrict}
             >
               Apply Table Filter
             </button>
@@ -195,34 +253,36 @@ function App() {
         {/* //Table data */}
         <div>
           <h2 className=" text-xl font-bold mb-2">Table Data</h2>
-          <div className=" overflow-x-auto">
-            <table className=" min-w-full bg-white border">
-              <thead>
-                <tr className="bg-gray-200">
-                  <th className=" border p-2">ID</th>
-                  <th className=" border p-2">Title</th>
-                  <th className=" border p-2">Completed</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className=" text-center">
-                  <td className=" border p-2">1</td>
-                  <td className=" border p-2">Abiha</td>
-                  <td className=" border p-2">False</td>
-                </tr>
-                <tr className=" text-center">
-                  <td className=" border p-2">2</td>
-                  <td className=" border p-2">Abiha</td>
-                  <td className=" border p-2">False</td>
-                </tr>
-                <tr className=" text-center">
-                  <td className=" border p-2">3</td>
-                  <td className=" border p-2">Abiha</td>
-                  <td className=" border p-2">False</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {loading ? (
+            <div className=" text-center py-4">Loading...</div>
+          ) : tododata.length > 0 ? (
+            <div className=" overflow-x-auto">
+              <table className=" min-w-full bg-white border">
+                <thead>
+                  <tr className="bg-gray-200">
+                    <th className=" border p-2">ID</th>
+                    <th className=" border p-2">Title</th>
+                    <th className=" border p-2">Completed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tododata.map((item) => (
+                    <tr key={item.id} className=" text-center">
+                      <td className=" border p-2">{item.id}</td>
+                      <td className=" border p-2">{item.title}</td>
+                      <td className=" border p-2">
+                        {item.completed ? "True" : "False"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className=" text-center py-4 border rounded">
+              No Result Found.
+            </div>
+          )}
         </div>
       </div>
     </>
